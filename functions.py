@@ -7,7 +7,6 @@ import base64
 import schedule
 import time
 from datetime import datetime
-import pytz
 from constants import *
 
 def get_kraken_signature(urlpath, data, secret):
@@ -27,46 +26,47 @@ def run_scheduler():
     Scheduler that triggers `my_task` at midnight and noon EST.
     """
     # Schedule the task
-    schedule.every().day.at("00:00").do(trade)  # Midnight EST
-    schedule.every().day.at("12:00").do(trade)  # Noon EST
+    schedule.every(2).hours.at(":30").do(trade)
+    ##schedule.every(1).minute.do(show_current_price)
 
     # Continuously run the scheduler
     while True:
         schedule.run_pending()
-        print("last price is " + str(get_last_closed_price(quoteurl, asset_pair)))
         time.sleep(1)  # Sleep for 1 second to avoid high CPU usage
 
+def show_current_price():
+    print(get_last_closed_price(quoteurl, asset_pair))
 
 def trade():
-	last_bid_price_float = get_last_bid_price(quoteurl, asset_pair)
-	print("buying " + str(dca_amount / last_bid_price_float) + "of " + asset_pair)
+    last_bid_price_float = get_last_bid_price(quoteurl, asset_pair)
+    print("buying " + str(dca_amount / last_bid_price_float) + "of " + asset_pair)
 
-	# Prepare the payload
-	post_data = {
-	    "nonce": str(int(time.time() * 1000)),  # Use the current timestamp in milliseconds
-	    "ordertype": "market",
-	    "type": "buy",
-	    "volume": str(dca_amount / last_bid_price_float),
-	    "pair": asset_pair,
-	    "price": str(last_bid_price_float),
-	    "ordertype": "limit"
-	}
+    # Prepare the payload
+    post_data = {
+        "nonce": str(int(time.time() * 1000)),  # Use the current timestamp in milliseconds
+        "ordertype": "market",
+        "type": "buy",
+        "volume": str(dca_amount / last_bid_price_float),
+        "pair": asset_pair,
+        "price": str(last_bid_price_float),
+        "ordertype": "limit"
+    }
 
-	# Generate API-Sign
-	api_sign = get_kraken_signature(url, post_data, api_secret)
+    # Generate API-Sign
+    api_sign = get_kraken_signature(url, post_data, api_secret)
 
-	# Prepare headers
-	headers = {
-	    'Content-Type': 'application/json',
-	    'Accept': 'application/json',
-	    'API-Key': private_key,
-	    'API-Sign': api_sign
-	}
+    # Prepare headers
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'API-Key': private_key,
+        'API-Sign': api_sign
+    }
 
-	# Make the request
-	response = requests.request("POST", api_base_url + url, headers=headers, data=json.dumps(post_data))
+    # Make the request
+    response = requests.request("POST", api_base_url + url, headers=headers, data=json.dumps(post_data))
 
-	print(response.text)
+    print(response.text)
 
 
 def get_last_bid_price(quote_url: str, pair: str) -> float:
